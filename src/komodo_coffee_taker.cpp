@@ -17,7 +17,7 @@
 #include "komodo_coffee_taker/CoffeeTaker.h"
 
 #define BASE_FRAME_ID 	"komodo_1/base_link"
-#define MAX_ELEV_VALUE 	5.0 //TODO change to real value!
+#define MAX_ELEV_VALUE 	0.5
 #define MIN_ELEV_VALUE 	0.0
 
 
