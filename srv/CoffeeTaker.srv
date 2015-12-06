@@ -1,0 +1,8 @@
+std_msgs/Float64[3] pick_xyz
+std_msgs/Float64    pick_orientation
+std_msgs/Float64[3] place_xyz
+std_msgs/Float64    place_orientation
+
+---
+std_msgs/Bool 		pick_success
+std_msgs/Bool	 	place_success

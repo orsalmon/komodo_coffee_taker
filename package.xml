@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package>
+  <name>komodo_coffee_taker</name>
+  <version>0.0.1</version>
+  <description>The komodo_coffee_taker package</description>
+  <maintainer email="orsalmon@gmail.com">Or Salmon</maintainer>
+
+  <license>BSD</license>
+
+  <build_depend>message_generation</build_depend>
+  <run_depend>message_runtime</run_depend>
+
+
+  <run_depend>moveit_ros_move_group</run_depend>
+  <run_depend>moveit_planners_ompl</run_depend>
+  <run_depend>moveit_ros_visualization</run_depend>
+  <run_depend>joint_state_publisher</run_depend>
+  <run_depend>robot_state_publisher</run_depend>
+  <run_depend>xacro</run_depend>
+  <build_depend>ric_description</build_depend>
+  <run_depend>ric_description</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+</package>
