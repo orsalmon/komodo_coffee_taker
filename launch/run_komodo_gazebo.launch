@@ -1,10 +1,10 @@
 <!-- -*- mode: XML -*- -->
 <launch>
 	
-	<include file="$(find komodo_arm_moveit_config)/launch/komodo_with_elev_gazebo_moveit.launch" />
+	<include file="$(find komodo_coffee_taker)/launch/komodo_with_elev_gazebo_moveit.launch" />
 
-	<include file="$(find komodo_2dnav)/launch/move_base_gazebo.launch" />
+<!--	<include file="$(find komodo_2dnav)/launch/move_base_gazebo.launch" />
 
-	<include file="$(find komodo_2dnav)/launch/ric_amcl.launch" />	
+		<include file="$(find komodo_2dnav)/launch/ric_amcl.launch" />	-->
 
 </launch>
