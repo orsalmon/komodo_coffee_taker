@@ -1,10 +1,11 @@
 <!-- -*- mode: XML -*- -->
 <launch>
 	
+	<!-- run komodo_with_elev with moveit and with gazebo -->
 	<include file="$(find komodo_coffee_taker)/launch/komodo_with_elev_gazebo_moveit.launch" />
-
-<!--	<include file="$(find komodo_2dnav)/launch/move_base_gazebo.launch" />
-
-		<include file="$(find komodo_2dnav)/launch/ric_amcl.launch" />	-->
+	<!-- run move_base -->
+	<include file="$(find komodo_coffee_taker)/launch/move_base_gazebo.launch" />
+	<!-- run AMCL -->
+	<include file="$(find komodo_2dnav)/launch/ric_amcl.launch" />	
 
 </launch>
