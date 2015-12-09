@@ -8,6 +8,6 @@ TrajectoryPlannerROS:
   acc_lim_x: 2.5
   acc_lim_y: 2.5
   #escape_vel: -0.3
-  global_frame_id: 'odom_link'
+  global_frame_id: 'komodo_1/odom_link'
 
   holonomic_robot: false

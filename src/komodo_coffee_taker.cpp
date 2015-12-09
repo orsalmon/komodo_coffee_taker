@@ -16,7 +16,7 @@
 #include "move_base/move_base.h"
 #include "komodo_coffee_taker/CoffeeTaker.h"
 
-#define BASE_FRAME_ID 	"komodo_1/base_link"
+#define BASE_FRAME_ID 	"base_link"
 #define MAX_ELEV_VALUE 	0.5
 #define MIN_ELEV_VALUE 	0.0
 
