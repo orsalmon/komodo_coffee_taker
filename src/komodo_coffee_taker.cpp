@@ -127,9 +127,9 @@ void getGoalandEndPos(komodo_coffee_taker::CoffeeTaker::Request &data)
 																					  currentGoalTheta);
 
 
-	currentEndPosition[0]	= data.place_xyz[0].data;
-	currentEndPosition[1]	= data.place_xyz[1].data;
-	currentEndPosition[2]	= data.place_xyz[2].data;
+	currentEndPosition[0]	= data.place_xyz[0].data - data.pick_xyz[0].data; 	// End position is the subtraction
+	currentEndPosition[1]	= data.place_xyz[1].data - data.pick_xyz[1].data;	// of the place vector with 
+	currentEndPosition[2]	= data.place_xyz[2].data - data.pick_xyz[2].data;	// the pick vector
 	currentEndTheta			= data.place_orientation.data;
 
 	ROS_INFO("End position: x=%.4f y=%.4f z=%.4f \nEnd orientation: theta=%.4f",currentEndPosition[0],
