@@ -16,7 +16,7 @@
 #include "move_base/move_base.h"
 #include "komodo_coffee_taker/CoffeeTaker.h"
 
-#define BASE_FRAME_ID 	"base_link"
+#define BASE_FRAME_ID 	"map"
 #define MAX_ELEV_VALUE 	0.5
 #define MIN_ELEV_VALUE 	0.0
 
@@ -204,21 +204,19 @@ void moveElevator(double posZ)
 
 	if (posZ >= MAX_ELEV_VALUE)
 	{
-		//TODO set elevator to MAX_ELEV_VALUE
 		elevator_command.data = MAX_ELEV_VALUE;
 	}
 	else if (posZ <= MIN_ELEV_VALUE)
 	{
-		//TODO set elevator to MIN_ELEV_VALUE
 		elevator_command.data = MIN_ELEV_VALUE;
 	}
 	else
 	{
-		//TODO set elevator to posZ
 		elevator_command.data = posZ;
 	}
 
 	elevator_command_publisher.publish(elevator_command);
+	ROS_INFO("Sending elevator command");
 	
 	return;
 }
