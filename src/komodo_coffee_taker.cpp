@@ -1,4 +1,5 @@
 #include <string>
+#include <cmath>
 #include "ros/ros.h"
 #include "ros/time.h"
 #include "std_msgs/Float64.h"
@@ -16,9 +17,10 @@
 #include "move_base/move_base.h"
 #include "komodo_coffee_taker/CoffeeTaker.h"
 
-#define BASE_FRAME_ID 	"map"
-#define MAX_ELEV_VALUE 	0.5
-#define MIN_ELEV_VALUE 	0.0
+#define MOVE_BASE_FRAME 	"map"
+#define MAX_ELEV_VALUE 		0.5
+#define MIN_ELEV_VALUE 		0.0
+#define PI 					3.141592654
 
 
 /*Prototypes*/
@@ -117,7 +119,7 @@ void getGoalandEndPos(komodo_coffee_taker::CoffeeTaker::Request &data)
 	currentGoalPosition[0]	= data.pick_xyz[0].data;
 	currentGoalPosition[1]	= data.pick_xyz[1].data;
 	currentGoalPosition[2]	= data.pick_xyz[2].data;
-	currentGoalTheta		= data.pick_orientation.data;
+	currentGoalTheta		= data.pick_orientation.data * PI / 180.0;
 
 	ROS_INFO("Object position: x=%.4f y=%.4f z=%.4f \nObject orientation: theta=%.4f",currentGoalPosition[0],
 																					  currentGoalPosition[1],
@@ -167,11 +169,12 @@ void setMoveBaseCommands(actionlib::SimpleActionClient<move_base_msgs::MoveBaseA
 {
 	move_base_msgs::MoveBaseGoal goal;
 
-	goal.target_pose.header.frame_id 	=	BASE_FRAME_ID;
+	goal.target_pose.header.frame_id 	=	MOVE_BASE_FRAME;
 	goal.target_pose.header.stamp 		=	ros::Time::now();
 	goal.target_pose.pose.position.x 	=	currentGoalPosition[0];
 	goal.target_pose.pose.position.y 	= 	currentGoalPosition[1];
-	goal.target_pose.pose.orientation.w = 	currentGoalTheta;
+	goal.target_pose.pose.orientation.w = 	cos(currentGoalTheta / 2);		//Quaternion definition
+	goal.target_pose.pose.orientation.z = 	sin(currentGoalTheta / 2);		//Quaternion definition
 
 	ROS_INFO("Sending move_base goal");
 	move_base_client->sendGoal(goal);
