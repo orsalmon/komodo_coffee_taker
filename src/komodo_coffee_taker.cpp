@@ -4,6 +4,7 @@
 #include "ros/time.h"
 #include "std_msgs/Float64.h"
 #include "std_msgs/Bool.h"
+#include "control_msgs/JointControllerState.h"
 #include "geometry_msgs/Pose.h"
 #include "moveit/move_group_interface/move_group.h"
 #include "moveit/planning_interface/planning_interface.h"
@@ -20,8 +21,10 @@
 #define MOVE_BASE_FRAME 		"map"
 #define MAX_ELEV_VALUE 			0.5
 #define MIN_ELEV_VALUE 			0.0
+#define ELEV_ERROR_TOLERANCE 	0.05
 #define PI 						3.141592654
-#define BASE_SPACE_FROM_OBJECT 	0.4 
+#define BASE_SPACE_FROM_OBJECT 	0.6 
+
 
 
 /*Prototypes*/
@@ -31,6 +34,7 @@ void updateGoalPos(double posX,double posY,double posZ,double orientation);
 void updateEndPos(double posX,double posY,double posZ,double orientation);
 void setMoveBaseCommands(actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> *move_base_client);
 void setArmMoveCommands(moveit::planning_interface::MoveGroup &group);
+void elevatorStateRecived(const control_msgs::JointControllerState &state);
 void moveElevator(double posZ);
 bool pickHandler();
 bool placeHandler();
@@ -41,20 +45,25 @@ double 															currentGoalPosition[3];
 double 															currentEndPosition[3];
 double 															currentGoalTheta 					= 0;
 double 															currentEndTheta 					= 0;
+double 															elevator_current_state_error;
+double 															elevator_current_command;
+ros::Subscriber 												elevator_state_subscriber;
 ros::Publisher 													display_arm_trajectory_publisher;
 ros::Publisher 													elevator_command_publisher;
 moveit_msgs::DisplayTrajectory 									display_arm_trajectory;
 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> 	*move_base_client;
+
 
 int main(int argc, char *argv[])
 {
 	ros::init(argc, argv, "komodo_coffee_taker");
 	ros::NodeHandle n;
 
-	ros::ServiceServer service = n.advertiseService("coffee_taker", coffee_taker);
-	display_arm_trajectory_publisher = n.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
-	elevator_command_publisher = n.advertise<std_msgs::Float64>("/elevator_controller/command", 1);
-	move_base_client = new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base",true);
+	ros::ServiceServer service 			= n.advertiseService("coffee_taker", coffee_taker);
+	display_arm_trajectory_publisher 	= n.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
+	elevator_command_publisher 			= n.advertise<std_msgs::Float64>("/elevator_controller/command", 1);
+	elevator_state_subscriber 			= n.subscribe("/elevator_controller/state", 1, &elevatorStateRecived);
+	move_base_client 					= new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base",true);
 
 	while(!move_base_client->waitForServer(ros::Duration(5.0)))
 	{
@@ -81,6 +90,11 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 
 	getGoalandEndPos(req);
 	moveElevator(req.pick_xyz[2].data);
+	ROS_INFO("Waiting for elevator to finish");
+	while (elevator_current_state_error > ELEV_ERROR_TOLERANCE)
+	{
+		ros::Duration(0.1).sleep();
+	}
 
 	while (res.pick_success.data != true)
 	{
@@ -98,7 +112,7 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 			//		and then update MoveIt command
 		}
 		ROS_INFO("Visualizing arm plan");
-		sleep(10.0); //Sleep to give Rviz time to visualize the plan
+		ros::Duration(5.0).sleep(); //Sleep to give Rviz time to visualize the plan
 		/* Uncomment below line when working with a real robot*/
 		/* group.move() */
 		/*if (pickHandler() == true)
@@ -216,6 +230,13 @@ void setArmMoveCommands(moveit::planning_interface::MoveGroup &group)
 	return;
 }
 
+/* elevatorStateRecived is callback function for elevator_state_subscriber and its update the elevator current state error */
+void elevatorStateRecived(const control_msgs::JointControllerState &state)
+{
+	elevator_current_state_error 	= state.error;
+	elevator_current_command 		= state.command;
+}
+
 /* moveElevator sending commands to the komodo elevator depanding on the Z position */
 void moveElevator(double posZ)
 {
@@ -236,6 +257,7 @@ void moveElevator(double posZ)
 
 	elevator_command_publisher.publish(elevator_command);
 	ROS_INFO("Sending elevator command");
-	
+	ros::Duration(1.0).sleep();
+
 	return;
 }
