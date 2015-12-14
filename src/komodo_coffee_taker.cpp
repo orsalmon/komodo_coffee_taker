@@ -171,14 +171,24 @@ void setMoveBaseCommands(actionlib::SimpleActionClient<move_base_msgs::MoveBaseA
 	double unit_x, unit_y, original_length;
 	move_base_msgs::MoveBaseGoal goal;
 
-	original_length = sqrt(pow(currentGoalPosition[0],2) + pow(currentGoalPosition[1],2));
-	unit_x 			= currentGoalPosition[0] / original_length;
-	unit_y 			= currentGoalPosition[1] / original_length;
-
 	goal.target_pose.header.frame_id 	=	MOVE_BASE_FRAME;
 	goal.target_pose.header.stamp 		=	ros::Time::now();
-	goal.target_pose.pose.position.x 	=	currentGoalPosition[0] - unit_x * BASE_SPACE_FROM_OBJECT;
-	goal.target_pose.pose.position.y 	= 	currentGoalPosition[1] - unit_y * BASE_SPACE_FROM_OBJECT;
+
+	original_length = sqrt(pow(currentGoalPosition[0],2) + pow(currentGoalPosition[1],2));
+
+	if (original_length != 0) 		//avoid from singularity
+	{
+		unit_x								= 	currentGoalPosition[0] / original_length;
+		unit_y								= 	currentGoalPosition[1] / original_length;
+		goal.target_pose.pose.position.x 	=	currentGoalPosition[0] - unit_x * BASE_SPACE_FROM_OBJECT;
+		goal.target_pose.pose.position.y 	= 	currentGoalPosition[1] - unit_y * BASE_SPACE_FROM_OBJECT;
+	}
+	else
+	{
+		goal.target_pose.pose.position.x 	=	- BASE_SPACE_FROM_OBJECT;
+		goal.target_pose.pose.position.y 	= 	- BASE_SPACE_FROM_OBJECT;
+	}
+	
 	goal.target_pose.pose.orientation.w = 	cos(currentGoalTheta / 2);		//Quaternion definition
 	goal.target_pose.pose.orientation.z = 	sin(currentGoalTheta / 2);		//Quaternion definition
 
