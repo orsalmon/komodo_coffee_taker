@@ -13,4 +13,4 @@ Instructions
 
 5. rosrun komodo_coffee_taker komodo_coffee_taker
 
-6. rosservice call /coffee_taker TAB and fill the data 
+6. rosservice call /coffee_taker TAB and fill the data: position [m] & orientation [deg]
