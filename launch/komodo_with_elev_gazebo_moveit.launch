@@ -12,7 +12,7 @@
   
   <!-- We resume the logic in empty_world.launch -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
-	<arg name="world_name" value="$(find ric_gazebo)/worlds/gas_station.world"/>
+	<arg name="world_name" value="$(find komodo_coffee_taker)/worlds/table_with_coke_can.world"/>
     <arg name="debug" value="$(arg debug)" />
     <arg name="gui" value="$(arg gui)" />
     <arg name="paused" value="$(arg paused)"/>
