@@ -9,7 +9,7 @@ Instructions
 
 3. catkin_make your workspace
 
-4. export GAZEBO_MODEL_PATH=~/bgumodo_ws/src/komodo_coffee_taker/worlds/gazebo_model/
+4. export GAZEBO_MODEL_PATH=~/[your-workspace]/src/komodo_coffee_taker/worlds/gazebo_model/
 (this should be typed once in every shell)
 
 5. roslaunch komodo_coffee_taker run_komodo_gazebo.launch
