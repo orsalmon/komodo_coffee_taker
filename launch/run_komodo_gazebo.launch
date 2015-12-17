@@ -6,7 +6,7 @@
 	<!-- run move_base -->
 	<include file="$(find komodo_coffee_taker)/launch/move_base_gazebo.launch" />
 	<!-- run gmapping -->
- 	<node pkg="gmapping" type="slam_gmapping" name="gmapping_thing"  >
+ 	<node pkg="gmapping" type="slam_gmapping" name="gmapping_komodo"  >
    	 <param name="scan" value="base_scan" />
 	</node>
 
