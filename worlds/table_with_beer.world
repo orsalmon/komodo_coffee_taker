@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+    <world name="default">
+
+    <include>
+      <uri>model://sun</uri>
+    </include>
+ 
+    <include>
+      <uri>model://ground_plane</uri>
+      <pose> 0 0 0 0 0 0</pose>
+    </include>
+
+    <include>
+      <uri>model://table</uri>
+      <pose> 1.5 1.8 0 0 0 0</pose>
+      <scale>1.0 1.0 1.0</scale>
+    </include>
+
+    <include>
+      <uri>model://goldstar_beer</uri>
+      <pose> 1.5 1.5 1.3 0 3.14159 0</pose>
+      <name>beer2</name>
+    </include>
+
+    </world>
+</sdf>
