@@ -53,7 +53,7 @@ ros::Publisher 													display_arm_trajectory_publisher;
 ros::Publisher 													elevator_command_publisher;
 moveit_msgs::DisplayTrajectory 									display_arm_trajectory;
 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> 	*move_base_client;
-tf::TransformListener 											tf_listener;
+tf::TransformListener 											*tf_listener;
 
 
 int main(int argc, char *argv[])
@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
 	elevator_command_publisher 			= n.advertise<std_msgs::Float64>("/elevator_controller/command", 1);
 	elevator_state_subscriber 			= n.subscribe("/elevator_controller/state", 1, &elevatorStateRecived);
 	move_base_client 					= new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base",true);
+	tf_listener 						= new tf::TransformListener;
 
 	while(!move_base_client->waitForServer(ros::Duration(5.0)))
 	{
@@ -225,12 +226,12 @@ void setArmMoveCommands(moveit::planning_interface::MoveGroup &group)
 	target_pose_map_frame.pose.orientation.x 	= 0.0;
 	target_pose_map_frame.pose.orientation.y 	= 0.0;
 	target_pose_map_frame.pose.orientation.z 	= 0.0;
-	target_pose_map_frame.pose.orientation.w 	= 0.0;
+	target_pose_map_frame.pose.orientation.w 	= 1.0;
 	target_pose_map_frame.pose.position.x 		= currentGoalPosition[0];
 	target_pose_map_frame.pose.position.y 		= currentGoalPosition[1];
 	target_pose_map_frame.pose.position.z 		= currentGoalPosition[2];
 
-	tf_listener.transformPose("Arm_base_link", target_pose_map_frame, target_pose_arm_frame);
+	tf_listener->transformPose("/Arm_base_link", target_pose_map_frame, target_pose_arm_frame);
 
 	ROS_INFO("Sending moveIt target to plan trajectory");
 	group.setPoseTarget(target_pose_arm_frame.pose);
