@@ -266,7 +266,7 @@ void moveElevator(double posZ)
 
 	elevator_command_publisher.publish(elevator_command);
 	ROS_INFO("Sending elevator command");
-	ros::Duration(1.0).sleep();
+	ros::Duration(2.0).sleep();
 
 	return;
 }
