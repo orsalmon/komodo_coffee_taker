@@ -2,10 +2,11 @@
 #include <cmath>
 #include "ros/ros.h"
 #include "ros/time.h"
+#include "tf/transform_listener.h"
 #include "std_msgs/Float64.h"
 #include "std_msgs/Bool.h"
 #include "control_msgs/JointControllerState.h"
-#include "geometry_msgs/Pose.h"
+#include "geometry_msgs/PoseStamped.h"
 #include "moveit/move_group_interface/move_group.h"
 #include "moveit/planning_interface/planning_interface.h"
 #include "moveit/planning_scene_interface/planning_scene_interface.h"
@@ -52,6 +53,7 @@ ros::Publisher 													display_arm_trajectory_publisher;
 ros::Publisher 													elevator_command_publisher;
 moveit_msgs::DisplayTrajectory 									display_arm_trajectory;
 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> 	*move_base_client;
+tf::TransformListener 											tf_listener;
 
 
 int main(int argc, char *argv[])
@@ -217,15 +219,21 @@ void setMoveBaseCommands(actionlib::SimpleActionClient<move_base_msgs::MoveBaseA
 //TODO check the relation between the pickup and the target_pose that needed
 void setArmMoveCommands(moveit::planning_interface::MoveGroup &group)
 {
-	geometry_msgs::Pose target_pose;
+	geometry_msgs::PoseStamped target_pose_map_frame, target_pose_arm_frame;
 
-	target_pose.orientation.w 	= 0.0;
-	target_pose.position.x 		= currentGoalPosition[0];
-	target_pose.position.y 		= currentGoalPosition[1];
-	target_pose.position.z 		= currentGoalPosition[2];
+	target_pose_map_frame.header.frame_id 		= "/map";
+	target_pose_map_frame.pose.orientation.x 	= 0.0;
+	target_pose_map_frame.pose.orientation.y 	= 0.0;
+	target_pose_map_frame.pose.orientation.z 	= 0.0;
+	target_pose_map_frame.pose.orientation.w 	= 0.0;
+	target_pose_map_frame.pose.position.x 		= currentGoalPosition[0];
+	target_pose_map_frame.pose.position.y 		= currentGoalPosition[1];
+	target_pose_map_frame.pose.position.z 		= currentGoalPosition[2];
+
+	tf_listener.transformPose("Arm_base_link", target_pose_map_frame, target_pose_arm_frame);
 
 	ROS_INFO("Sending moveIt target to plan trajectory");
-	group.setPoseTarget(target_pose);
+	group.setPoseTarget(target_pose_arm_frame.pose);
 
 	return;
 }
