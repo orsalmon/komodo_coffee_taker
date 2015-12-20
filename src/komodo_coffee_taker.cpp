@@ -68,6 +68,8 @@ int main(int argc, char *argv[])
 	move_base_client 					= new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base",true);
 	tf_listener 						= new tf::TransformListener;
 
+	ros::Duration(1.0).sleep(); //time to construct ros subscribers and publishers
+
 	while(!move_base_client->waitForServer(ros::Duration(5.0)))
 	{
 		ROS_INFO("Waiting for the move_base action server to come up");
