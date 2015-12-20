@@ -93,10 +93,10 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 
 	getGoalandEndPos(req);
 	moveElevator(req.pick_xyz[2].data);
-	ROS_INFO("Waiting for elevator to finish");
 	while (elevator_current_state_error > ELEV_ERROR_TOLERANCE)
 	{
-		ros::Duration(0.1).sleep();
+		ros::Duration(0.5).sleep();
+		ROS_INFO("Waiting for elevator to finish");
 	}
 
 	while (res.pick_success.data != true)
@@ -106,6 +106,8 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 		while (move_base_client->getState() != actionlib::SimpleClientGoalState::SUCCEEDED)
 		{
 			//TODO check where is the problem (orientation/position) and update MoveBaseCommands with another option
+			ros::Duration(1.0).sleep();
+			ROS_INFO("Problem to move base!");
 		}
 
 		setArmMoveCommands(group);
@@ -113,6 +115,8 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 		{
 			//TODO check why it's impossible to plan trajectory and give a solution (maybe by move_base action)
 			//		and then update MoveIt command
+			ros::Duration(1.0).sleep();
+			ROS_INFO("Problem to move arm!");
 		}
 		ROS_INFO("Visualizing arm plan");
 		ros::Duration(5.0).sleep(); //Sleep to give Rviz time to visualize the plan
@@ -231,8 +235,9 @@ void setArmMoveCommands(moveit::planning_interface::MoveGroup &group)
 	target_pose_map_frame.pose.position.y 		= currentGoalPosition[1];
 	target_pose_map_frame.pose.position.z 		= currentGoalPosition[2];
 
-	tf_listener->transformPose("/Arm_base_link", target_pose_map_frame, target_pose_arm_frame);
-
+	tf_listener->transformPose(group.getPlanningFrame(), target_pose_map_frame, target_pose_arm_frame);
+	//ROS_INFO("Transforming moveIt command from /map frame to /%s frame",target_pose_arm_frame.header.frame_id);
+	ROS_INFO("Goal position tolerance = %f",group.getGoalPositionTolerance());
 	ROS_INFO("Sending moveIt target to plan trajectory");
 	group.setPoseTarget(target_pose_arm_frame.pose);
 
