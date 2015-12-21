@@ -22,7 +22,7 @@
 #define MOVE_BASE_FRAME 		"map"
 #define MAX_ELEV_VALUE 			0.5
 #define MIN_ELEV_VALUE 			0.0
-#define ELEV_ERROR_TOLERANCE 	0.05
+#define ELEV_ERROR_TOLERANCE 	0.3
 #define PI 						3.141592654
 #define BASE_SPACE_FROM_OBJECT 	0.6 
 
@@ -46,9 +46,8 @@ double 															currentGoalPosition[3];
 double 															currentEndPosition[3];
 double 															currentGoalTheta 					= 0;
 double 															currentEndTheta 					= 0;
-double 															elevator_current_state_error;
+double 															elevator_current_state;
 double 															elevator_current_command;
-ros::Subscriber 												elevator_state_subscriber;
 ros::Publisher 													display_arm_trajectory_publisher;
 ros::Publisher 													elevator_command_publisher;
 moveit_msgs::DisplayTrajectory 									display_arm_trajectory;
@@ -61,12 +60,12 @@ int main(int argc, char *argv[])
 	ros::init(argc, argv, "komodo_coffee_taker");
 	ros::NodeHandle n;
 
-	ros::ServiceServer service 			= n.advertiseService("coffee_taker", coffee_taker);
-	display_arm_trajectory_publisher 	= n.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
-	elevator_command_publisher 			= n.advertise<std_msgs::Float64>("/elevator_controller/command", 1);
-	elevator_state_subscriber 			= n.subscribe("/elevator_controller/state", 1, &elevatorStateRecived);
-	move_base_client 					= new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base",true);
-	tf_listener 						= new tf::TransformListener;
+	ros::ServiceServer service 					= n.advertiseService("coffee_taker", coffee_taker);
+	display_arm_trajectory_publisher 			= n.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
+	elevator_command_publisher 					= n.advertise<std_msgs::Float64>("/elevator_controller/command", 1);
+	ros::Subscriber elevator_state_subscriber 	= n.subscribe("/elevator_controller/state", 100, elevatorStateRecived);
+	move_base_client 							= new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base",true);
+	tf_listener 								= new tf::TransformListener;
 
 	ros::Duration(1.0).sleep(); //time to construct ros subscribers and publishers
 
@@ -95,10 +94,10 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 
 	getGoalandEndPos(req);
 	moveElevator(req.pick_xyz[2].data);
-	while (elevator_current_state_error > ELEV_ERROR_TOLERANCE)
+	while (!((elevator_current_state < elevator_current_command + ELEV_ERROR_TOLERANCE) && (elevator_current_state > elevator_current_command - ELEV_ERROR_TOLERANCE)))
 	{
-		ros::Duration(0.5).sleep();
-		ROS_INFO("Waiting for elevator to finish");
+		ros::Duration(5.0).sleep();
+		ROS_INFO("Waiting for elevator to finish, current state: %f",elevator_current_state);
 	}
 
 	while (res.pick_success.data != true)
@@ -237,8 +236,8 @@ void setArmMoveCommands(moveit::planning_interface::MoveGroup &group)
 	target_pose_map_frame.pose.position.y 		= currentGoalPosition[1];
 	target_pose_map_frame.pose.position.z 		= currentGoalPosition[2];
 
-	tf_listener->transformPose(group.getPlanningFrame(), target_pose_map_frame, target_pose_arm_frame);
-	//ROS_INFO("Transforming moveIt command from /map frame to /%s frame",target_pose_arm_frame.header.frame_id);
+	tf_listener->transformPose("/dummy_link", target_pose_map_frame, target_pose_arm_frame);
+	ROS_INFO("Transforming moveIt command from /map frame to /dummy_link frame");
 	ROS_INFO("Goal position tolerance = %f",group.getGoalPositionTolerance());
 	ROS_INFO("Sending moveIt target to plan trajectory");
 	group.setPoseTarget(target_pose_arm_frame.pose);
@@ -249,8 +248,7 @@ void setArmMoveCommands(moveit::planning_interface::MoveGroup &group)
 /* elevatorStateRecived is callback function for elevator_state_subscriber and its update the elevator current state error */
 void elevatorStateRecived(const control_msgs::JointControllerState &state)
 {
-	elevator_current_state_error 	= state.error;
-	elevator_current_command 		= state.command;
+	elevator_current_state 	= state.process_value;
 }
 
 /* moveElevator sending commands to the komodo elevator depanding on the Z position */
@@ -271,8 +269,9 @@ void moveElevator(double posZ)
 		elevator_command.data = posZ;
 	}
 
+	elevator_current_command = elevator_command.data;
 	elevator_command_publisher.publish(elevator_command);
-	ROS_INFO("Sending elevator command");
+	ROS_INFO("Sending elevator command: %f",elevator_current_command);
 	ros::Duration(2.0).sleep();
 
 	return;
