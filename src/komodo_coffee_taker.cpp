@@ -94,11 +94,12 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 
 	getGoalandEndPos(req);
 	moveElevator(req.pick_xyz[2].data);
-	while (!((elevator_current_state < elevator_current_command + ELEV_ERROR_TOLERANCE) && (elevator_current_state > elevator_current_command - ELEV_ERROR_TOLERANCE)))
+	ros::Duration(30.0).sleep();
+	/*while (!((elevator_current_state < elevator_current_command + ELEV_ERROR_TOLERANCE) && (elevator_current_state > elevator_current_command - ELEV_ERROR_TOLERANCE)))
 	{
 		ros::Duration(5.0).sleep();
 		ROS_INFO("Waiting for elevator to finish, current state: %f",elevator_current_state);
-	}
+	}*/
 
 	while (res.pick_success.data != true)
 	{
@@ -112,17 +113,16 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 		}
 
 		setArmMoveCommands(group);
-		while (group.plan(my_plan) != true)
+		/*while (group.plan(my_plan) != true)
 		{
 			//TODO check why it's impossible to plan trajectory and give a solution (maybe by move_base action)
 			//		and then update MoveIt command
 			ros::Duration(1.0).sleep();
 			ROS_INFO("Problem to move arm!");
-		}
+		}*/
 		ROS_INFO("Visualizing arm plan");
 		ros::Duration(5.0).sleep(); //Sleep to give Rviz time to visualize the plan
-		/* Uncomment below line when working with a real robot*/
-		/* group.move() */
+		group.move(); 
 		/*if (pickHandler() == true)
 			res.pick_success.data == true;*/
 	}
@@ -236,11 +236,11 @@ void setArmMoveCommands(moveit::planning_interface::MoveGroup &group)
 	target_pose_map_frame.pose.position.y 		= currentGoalPosition[1];
 	target_pose_map_frame.pose.position.z 		= currentGoalPosition[2];
 
-	tf_listener->transformPose("/dummy_link", target_pose_map_frame, target_pose_arm_frame);
-	ROS_INFO("Transforming moveIt command from /map frame to /dummy_link frame");
+	//tf_listener->transformPose(group.getPlanningFrame(), target_pose_map_frame, target_pose_arm_frame);
+	//ROS_INFO("Transforming moveIt command from %s frame to %s frame",target_pose_map_frame.header.frame_id.c_str(),group.getPlanningFrame().c_str());
 	ROS_INFO("Goal position tolerance = %f",group.getGoalPositionTolerance());
 	ROS_INFO("Sending moveIt target to plan trajectory");
-	group.setPoseTarget(target_pose_arm_frame.pose);
+	group.setPoseTarget(target_pose_map_frame,"wrist_link");
 
 	return;
 }

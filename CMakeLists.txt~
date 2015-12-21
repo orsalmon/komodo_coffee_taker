@@ -37,7 +37,3 @@ include_directories(
 add_executable(komodo_coffee_taker src/komodo_coffee_taker.cpp)
 target_link_libraries(komodo_coffee_taker ${catkin_LIBRARIES})
 add_dependencies(komodo_coffee_taker beginner_tutorials_gencpp)
-
-add_executable(moveit_test src/moveit_test.cpp)
-target_link_libraries(moveit_test ${catkin_LIBRARIES})
-add_dependencies(moveit_test beginner_tutorials_gencpp)
