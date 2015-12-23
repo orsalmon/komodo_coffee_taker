@@ -3,6 +3,7 @@
 #include "ros/ros.h"
 #include "ros/time.h"
 #include "tf/transform_listener.h"
+#include "tf/transform_broadcaster.h"
 #include "std_msgs/Float64.h"
 #include "std_msgs/Bool.h"
 #include "control_msgs/JointControllerState.h"
@@ -19,14 +20,16 @@
 #include "move_base/move_base.h"
 #include "komodo_coffee_taker/CoffeeTaker.h"
 
-#define MOVE_BASE_FRAME 		"map"
-#define MAX_ELEV_VALUE 			0.5
-#define MIN_ELEV_VALUE 			0.0
-#define ELEV_ERROR_TOLERANCE 	0.3
-#define PI 						3.141592654
-#define BASE_SPACE_FROM_OBJECT 	0.6 
 
-
+#define PI 								3.141592654
+#define MOVE_BASE_FRAME 				"map"
+#define MAX_ELEV_VALUE 					0.5
+#define MIN_ELEV_VALUE 					0.0
+#define ELEV_ERROR_TOLERANCE 			0.3
+#define BASE_SPACE_FROM_OBJECT_X 		0.4 
+#define BASE_SPACE_FROM_OBJECT_Y 		0.25 
+#define GOAL_ARM_TOLERANCE 				0.1
+#define END_EFFECTOR_SPACE_FROM_OBJECT 	0.1
 
 /*Prototypes*/
 bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request &req, komodo_coffee_taker::CoffeeTaker::Response &res);
@@ -53,6 +56,9 @@ ros::Publisher 													elevator_command_publisher;
 moveit_msgs::DisplayTrajectory 									display_arm_trajectory;
 actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> 	*move_base_client;
 tf::TransformListener 											*tf_listener;
+tf::TransformBroadcaster 										*tf_broadcaster;
+tf::Transform 													goal_transform;
+tf::Transform 													end_transform;
 
 
 int main(int argc, char *argv[])
@@ -66,6 +72,7 @@ int main(int argc, char *argv[])
 	ros::Subscriber elevator_state_subscriber 	= n.subscribe("/elevator_controller/state", 100, elevatorStateRecived);
 	move_base_client 							= new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base",true);
 	tf_listener 								= new tf::TransformListener;
+	tf_broadcaster 								= new tf::TransformBroadcaster;
 
 	ros::Duration(1.0).sleep(); //time to construct ros subscribers and publishers
 
@@ -73,7 +80,6 @@ int main(int argc, char *argv[])
 	{
 		ROS_INFO("Waiting for the move_base action server to come up");
 	}
-
 
 	ROS_INFO("Ready for commands:");
 
@@ -93,8 +99,6 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 	res.place_success.data 	= false;
 
 	getGoalandEndPos(req);
-	moveElevator(req.pick_xyz[2].data);
-	ros::Duration(30.0).sleep();
 	/*while (!((elevator_current_state < elevator_current_command + ELEV_ERROR_TOLERANCE) && (elevator_current_state > elevator_current_command - ELEV_ERROR_TOLERANCE)))
 	{
 		ros::Duration(5.0).sleep();
@@ -108,7 +112,7 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 		while (move_base_client->getState() != actionlib::SimpleClientGoalState::SUCCEEDED)
 		{
 			//TODO check where is the problem (orientation/position) and update MoveBaseCommands with another option
-			ros::Duration(1.0).sleep();
+			ros::Duration(5.0).sleep();
 			ROS_INFO("Problem to move base!");
 		}
 
@@ -120,9 +124,9 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 			ros::Duration(1.0).sleep();
 			ROS_INFO("Problem to move arm!");
 		}*/
-		ROS_INFO("Visualizing arm plan");
-		ros::Duration(5.0).sleep(); //Sleep to give Rviz time to visualize the plan
+		ROS_INFO("Moving arm...");
 		group.move(); 
+		ROS_INFO("finish!");
 		/*if (pickHandler() == true)
 			res.pick_success.data == true;*/
 	}
@@ -181,7 +185,7 @@ void updateEndPos(double posX,double posY,double posZ,double orientation)
 	currentEndPosition[0] 	= posX;
 	currentEndPosition[1] 	= posY;
 	currentEndPosition[2] 	= posZ;
-	currentEndTheta		= orientation;	
+	currentEndTheta			= orientation;	
 
 	return;
 }
@@ -190,35 +194,38 @@ void updateEndPos(double posX,double posY,double posZ,double orientation)
 //TODO check the relation between the goal point and the robot frame 
 void setMoveBaseCommands(actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> *move_base_client)
 {
-	double unit_x, unit_y, original_length;
 	move_base_msgs::MoveBaseGoal goal;
+	geometry_msgs::PoseStamped target_pose_map_frame;
+	geometry_msgs::PoseStamped target_pose_goal_frame;
 
 	goal.target_pose.header.frame_id 	=	MOVE_BASE_FRAME;
 	goal.target_pose.header.stamp 		=	ros::Time::now();
 
-	original_length = sqrt(pow(currentGoalPosition[0],2) + pow(currentGoalPosition[1],2));
+	goal_transform.setOrigin( tf::Vector3(currentGoalPosition[0], currentGoalPosition[1], currentGoalPosition[2]) );
+	goal_transform.setRotation( tf::Quaternion(0, 0, sin(currentGoalTheta / 2), cos(currentGoalTheta / 2)) );
 
-	if (original_length != 0) 		//avoid from singularity
-	{
-		unit_x								= 	currentGoalPosition[0] / original_length;
-		unit_y								= 	currentGoalPosition[1] / original_length;
-		goal.target_pose.pose.position.x 	=	currentGoalPosition[0] - unit_x * BASE_SPACE_FROM_OBJECT;
-		goal.target_pose.pose.position.y 	= 	currentGoalPosition[1] - unit_y * BASE_SPACE_FROM_OBJECT;
-	}
-	else
-	{
-		goal.target_pose.pose.position.x 	=	- BASE_SPACE_FROM_OBJECT;
-		goal.target_pose.pose.position.y 	= 	- BASE_SPACE_FROM_OBJECT;
-	}
-	
-	goal.target_pose.pose.orientation.w = 	cos(currentGoalTheta / 2);		//Quaternion definition
-	goal.target_pose.pose.orientation.z = 	sin(currentGoalTheta / 2);		//Quaternion definition
+	tf_broadcaster->sendTransform(tf::StampedTransform(goal_transform, ros::Time::now(), "map", "goal_frame"));
+	ros::Duration(2.0).sleep();
 
-	ROS_INFO("Sending move_base goal");
+	target_pose_goal_frame.header.frame_id 		= 		"/goal_frame";
+	target_pose_goal_frame.pose.position.x 		= 	- 	BASE_SPACE_FROM_OBJECT_X;
+	target_pose_goal_frame.pose.position.y 		= 	-	BASE_SPACE_FROM_OBJECT_Y;
+	target_pose_goal_frame.pose.orientation.w 	= 		1;
+
+	tf_listener->transformPose("/map", target_pose_goal_frame, target_pose_map_frame);
+
+	goal.target_pose.pose.position.x = target_pose_map_frame.pose.position.x;
+	goal.target_pose.pose.position.y = target_pose_map_frame.pose.position.y;
+	goal.target_pose.pose.position.z = 0.0; 									//moves on the ground
+	goal.target_pose.pose.orientation.w = 	cos(currentGoalTheta / 2);			//Quaternion definition
+	goal.target_pose.pose.orientation.z = 	sin(currentGoalTheta / 2);			//Quaternion definition
+
+	ROS_INFO("Sending move_base goal command:");
+	ROS_INFO("Position: x=%.4f y=%.4f", goal.target_pose.pose.position.x , goal.target_pose.pose.position.y);
+	ROS_INFO("Quaternion: x=%.4f y=%.4f z=%.4f w=%.4f", goal.target_pose.pose.orientation.x ,goal.target_pose.pose.orientation.y , goal.target_pose.pose.orientation.z , goal.target_pose.pose.orientation.w );
 	move_base_client->sendGoal(goal);
 
 	return;
-
 }
 
 /* setArmMoveCommands starting moveIt planner (without actually act the komodo arm) */
@@ -236,11 +243,15 @@ void setArmMoveCommands(moveit::planning_interface::MoveGroup &group)
 	target_pose_map_frame.pose.position.y 		= currentGoalPosition[1];
 	target_pose_map_frame.pose.position.z 		= currentGoalPosition[2];
 
-	//tf_listener->transformPose(group.getPlanningFrame(), target_pose_map_frame, target_pose_arm_frame);
-	//ROS_INFO("Transforming moveIt command from %s frame to %s frame",target_pose_map_frame.header.frame_id.c_str(),group.getPlanningFrame().c_str());
+	group.setGoalTolerance(GOAL_ARM_TOLERANCE);
+	tf_listener->transformPose(group.getPlanningFrame(), target_pose_map_frame, target_pose_arm_frame);
+	ROS_INFO("Transforming moveIt command from %s frame to %s frame",target_pose_map_frame.header.frame_id.c_str(),group.getPlanningFrame().c_str());
 	ROS_INFO("Goal position tolerance = %f",group.getGoalPositionTolerance());
 	ROS_INFO("Sending moveIt target to plan trajectory");
-	group.setPoseTarget(target_pose_map_frame,"wrist_link");
+	group.setPoseTarget(target_pose_arm_frame,"wrist_link");
+
+	ROS_INFO("goal in %s frame: x=%f y=%f z=%f",target_pose_map_frame.header.frame_id.c_str(),target_pose_map_frame.pose.position.x,target_pose_map_frame.pose.position.y,target_pose_map_frame.pose.position.z);
+	ROS_INFO("goal in %s frame: x=%f y=%f z=%f",target_pose_arm_frame.header.frame_id.c_str(),target_pose_arm_frame.pose.position.x,target_pose_arm_frame.pose.position.y,target_pose_arm_frame.pose.position.z);
 
 	return;
 }

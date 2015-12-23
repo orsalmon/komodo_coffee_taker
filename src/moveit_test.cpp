@@ -16,13 +16,13 @@ int main(int argc, char *argv[])
 	moveit::planning_interface::MoveGroup group("arm");
 	moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
 	ros::Publisher display_publisher = n.advertise<moveit_msgs::DisplayTrajectory>("/move_group/display_planned_path", 1, true);
-	ros::WallDuration(1.0).sleep();
 	moveit_msgs::DisplayTrajectory display_trajectory;
 	ROS_INFO("Reference frame: %s", group.getPlanningFrame().c_str());
 	ROS_INFO("End effector frame: %s", group.getEndEffectorLink().c_str());
+	ros::WallDuration(5.0).sleep();
 	
 	geometry_msgs::PoseStamped target_pose1;
-	target_pose1.header.frame_id = group.getPlanningFrame().c_str();
+	target_pose1.header.frame_id = "/dummy_link";
 	target_pose1.pose.orientation.w = 1.0;
 	target_pose1.pose.orientation.x = 0.0;
 	target_pose1.pose.orientation.y = 0.0;
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 	target_pose1.pose.position.y = 0.0;
 	target_pose1.pose.position.z = 0.5;
 	group.setPoseTarget(target_pose1,"wrist_link");
-	group.setGoalTolerance(0.01);
+	group.setGoalTolerance(0.31);
 	//group.setPlanningTime(15.0);
 	ROS_INFO("YAAA");
 	group.move();
