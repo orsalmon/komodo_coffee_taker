@@ -30,6 +30,7 @@
 #define BASE_SPACE_FROM_OBJECT_SIDE 	0.2
 #define GOAL_ARM_TOLERANCE 				0.15
 #define END_EFFECTOR_SPACE_FROM_OBJECT 	0.15
+#define MAX_VEL_SCALING_FACTOR 			0.2 
 
 /*Prototypes*/
 bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request &req, komodo_coffee_taker::CoffeeTaker::Response &res);
@@ -37,7 +38,7 @@ void getGoalandEndPos(komodo_coffee_taker::CoffeeTaker::Request &data);
 void updateGoalPos(double posX,double posY,double posZ,double orientation);
 void updateEndPos(double posX,double posY,double posZ,double orientation);
 void setMoveBaseCommands(actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> *move_base_client);
-void setArmMoveCommands(moveit::planning_interface::MoveGroup &group);
+void setArmMoveCommands();
 void elevatorStateRecived(const control_msgs::JointControllerState &state);
 void moveElevator(double posZ);
 bool pickHandler();
@@ -59,6 +60,8 @@ tf::TransformListener 											*tf_listener;
 tf::TransformBroadcaster 										*tf_broadcaster;
 tf::Transform 													goal_transform;
 tf::Transform 													end_transform;
+moveit::planning_interface::MoveGroup 							*group;
+moveit::planning_interface::MoveGroup::Plan 					*my_plan;
 
 
 int main(int argc, char *argv[])
@@ -73,6 +76,8 @@ int main(int argc, char *argv[])
 	move_base_client 							= new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base",true);
 	tf_listener 								= new tf::TransformListener;
 	tf_broadcaster 								= new tf::TransformBroadcaster;
+	group 										= new moveit::planning_interface::MoveGroup("arm");
+	my_plan 									= new moveit::planning_interface::MoveGroup::Plan;
 
 	ros::Duration(1.0).sleep(); //time to construct ros subscribers and publishers
 
@@ -91,9 +96,7 @@ int main(int argc, char *argv[])
 bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
              	  komodo_coffee_taker::CoffeeTaker::Response &res)
 {
-	moveit::planning_interface::PlanningSceneInterface scene;
-	moveit::planning_interface::MoveGroup group("arm");
-	moveit::planning_interface::MoveGroup::Plan my_plan;
+	//moveit::planning_interface::PlanningSceneInterface scene;
 	
 	res.pick_success.data 	= false;		/*Initialize the response of the service*/
 	res.place_success.data 	= false;
@@ -116,8 +119,9 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 			ROS_INFO("Problem to move base!");
 		}
 
-		setArmMoveCommands(group);
-		/*while (group.plan(my_plan) != true)
+		setArmMoveCommands();
+		//group->plan(*my_plan);
+		/*while (group.plan(my_plan) != moveit_msgs::MoveItErrorCodes::SUCCESS)
 		{
 			//TODO check why it's impossible to plan trajectory and give a solution (maybe by move_base action)
 			//		and then update MoveIt command
@@ -125,10 +129,10 @@ bool coffee_taker(komodo_coffee_taker::CoffeeTaker::Request  &req,
 			ROS_INFO("Problem to move arm!");
 		}*/
 		ROS_INFO("Moving arm...");
-		group.move(); 
+		group->move(); 
 		ROS_INFO("finish!");
-		/*if (pickHandler() == true)
-			res.pick_success.data == true;*/
+		/*if (pickHandler() == true) */
+			res.pick_success.data = true;
 	}
 
 	//TODO write almost the same while loop for the place part
@@ -230,28 +234,34 @@ void setMoveBaseCommands(actionlib::SimpleActionClient<move_base_msgs::MoveBaseA
 
 /* setArmMoveCommands starting moveIt planner (without actually act the komodo arm) */
 //TODO check the relation between the pickup and the target_pose that needed
-void setArmMoveCommands(moveit::planning_interface::MoveGroup &group)
+void setArmMoveCommands()
 {
 	geometry_msgs::PoseStamped target_pose_object_frame, target_pose_arm_frame;
 
 	target_pose_object_frame.header.frame_id 		= "/goal_frame";
 	target_pose_object_frame.pose.orientation.x 	= 0.0;
 	target_pose_object_frame.pose.orientation.y 	= 0.0;
-	target_pose_object_frame.pose.orientation.z 	= sin(PI / 2);
-	target_pose_object_frame.pose.orientation.w 	= cos(PI / 2);
+	//target_pose_object_frame.pose.orientation.z 	= sin(PI / 2);
+	//target_pose_object_frame.pose.orientation.w 	= cos(PI / 2);
+	target_pose_object_frame.pose.orientation.z 	= 0.0;
+	target_pose_object_frame.pose.orientation.w 	= 1.0;
 	target_pose_object_frame.pose.position.x 		= 0.0;
 	target_pose_object_frame.pose.position.y 		= - END_EFFECTOR_SPACE_FROM_OBJECT;
-	target_pose_object_frame.pose.position.z 		= 0.0;
+	target_pose_object_frame.pose.position.z 		= 0.05;
+
+	group->setStartStateToCurrentState();
 
 	tf_broadcaster->sendTransform(tf::StampedTransform(goal_transform, ros::Time::now(), "map", "goal_frame"));
 	ros::Duration(4.0).sleep();
 
-	group.setGoalTolerance(GOAL_ARM_TOLERANCE);
-	tf_listener->transformPose(group.getPlanningFrame(), target_pose_object_frame, target_pose_arm_frame);
-	ROS_INFO("Transforming moveIt command from %s frame to %s frame",target_pose_object_frame.header.frame_id.c_str(),group.getPlanningFrame().c_str());
-	ROS_INFO("Goal position tolerance = %.4f",group.getGoalPositionTolerance());
+	group->setGoalTolerance(GOAL_ARM_TOLERANCE);
+	tf_listener->transformPose(group->getPlanningFrame(), target_pose_object_frame, target_pose_arm_frame);
+	ROS_INFO("Transforming moveIt command from %s frame to %s frame",target_pose_object_frame.header.frame_id.c_str(),group->getPlanningFrame().c_str());
+	ROS_INFO("Goal position tolerance = %.4f",group->getGoalPositionTolerance());
 	ROS_INFO("Sending moveIt target to plan trajectory");
-	group.setPoseTarget(target_pose_arm_frame,"wrist_link");
+
+	group->setMaxVelocityScalingFactor(MAX_VEL_SCALING_FACTOR);
+	group->setPoseTarget(target_pose_arm_frame,"wrist_link");
 
 	ROS_INFO("goal in %s frame: x=%.4f y=%.4f z=%.4f",target_pose_object_frame.header.frame_id.c_str(),target_pose_object_frame.pose.position.x,target_pose_object_frame.pose.position.y,target_pose_object_frame.pose.position.z);
 	ROS_INFO("goal in %s frame: x=%.4f y=%.4f z=%.4f",target_pose_arm_frame.header.frame_id.c_str(),target_pose_arm_frame.pose.position.x,target_pose_arm_frame.pose.position.y,target_pose_arm_frame.pose.position.z);
